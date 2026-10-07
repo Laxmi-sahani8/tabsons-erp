@@ -1785,64 +1785,44 @@ def add_transfer():
     log_activity(current_user.name, "TRANSFER_STOCK", f"Created Transfer Order {trf_id}")
     flash("New Transfer Order Created!", "success")
     return redirect(url_for("asset_transfers"))
-
-@app.route("/powerbi-workspaces")
-@login_required
+@app.route('/powerbi-workspaces')
 def powerbi_workspaces():
     conn = get_db()
-    try:
-        items = conn.execute("SELECT * FROM items").fetchall()
-    except Exception:
-        items = []
+    
+    # 1. Dynamic KPI Calculations
+    total_products = conn.execute("SELECT COUNT(*) FROM inventory").fetchone()[0] or 0
+    low_stock = conn.execute("SELECT COUNT(*) FROM inventory WHERE quantity > 0 AND quantity <= 10").fetchone()[0] or 0
+    out_of_stock = conn.execute("SELECT COUNT(*) FROM inventory WHERE quantity = 0").fetchone()[0] or 0
+    total_suppliers = conn.execute("SELECT COUNT(DISTINCT supplier) FROM purchases").fetchone()[0] or 0
+    total_valuation = conn.execute("SELECT SUM(quantity * unit_price) FROM inventory").fetchone()[0] or 0.0
 
-    try:
-        total_stock = conn.execute("SELECT COALESCE(SUM(quantity), 0) FROM items").fetchone()[0]
-        total_val = conn.execute("SELECT COALESCE(SUM(quantity * price), 0) FROM items").fetchone()[0]
-    except Exception:
-        total_stock = 0
-        total_val = 0
+    # 2. Stock Purchase Counts
+    unfulfilled_count = conn.execute("SELECT COUNT(*) FROM purchases WHERE status = 'UNFULFILLED'").fetchone()[0] or 0
+    received_count = conn.execute("SELECT COUNT(*) FROM purchases WHERE status = 'RECEIVED'").fetchone()[0] or 0
 
-    try:
-        today_exp = conn.execute("SELECT COALESCE(SUM(amount), 0) FROM expenses").fetchone()[0]
-    except Exception:
-        today_exp = 0
+    # 3. Dynamic Dropdown Lists from Database
+    warehouses = [row[0] for row in conn.execute("SELECT DISTINCT location FROM inventory WHERE location IS NOT NULL").fetchall()]
+    categories = [row[0] for row in conn.execute("SELECT DISTINCT category FROM inventory WHERE category IS NOT NULL").fetchall()]
+
+    # 4. Tables Data with Search Alignment
+    recent_purchases = conn.execute("SELECT supplier, order_date, status, product_count FROM purchases ORDER BY id DESC LIMIT 10").fetchall()
+    stock_levels = conn.execute("SELECT image_url, asset_name AS product_name, category, quantity FROM inventory ORDER BY id DESC").fetchall()
 
     conn.close()
 
-    summary = {
-        "total_stock": total_stock, 
-        "total_valuation": round(total_val, 2), 
-        "today_expense": round(today_exp, 2)
-    }
-
-    categories = sorted(list(set([dict(item).get('category') for item in items if dict(item).get('category')])))
-    
-    chart_data = {'All': {'labels': [], 'stock': []}}
-    for cat in categories:
-        chart_data[cat] = {'labels': [], 'stock': []}
-
-    for item in items:
-        row = dict(item)
-        asset_name = row.get('name') or row.get('asset_name') or 'Item'
-        stock_qty = row.get('quantity') or row.get('stock_quantity') or 0
-        category = row.get('category') or ''
-
-        chart_data['All']['labels'].append(asset_name)
-        chart_data['All']['stock'].append(stock_qty)
-
-        if category in chart_data:
-            chart_data[category]['labels'].append(asset_name)
-            chart_data[category]['stock'].append(stock_qty)
-
-    return render_page(
-        "powerbi", 
-        "Power BI Workspaces", 
-        "Executive Analytics and Power BI Reports", 
-        DASHBOARD_HTML, 
-        summary=summary,
+    return render_template(
+        'dashboard.html',
+        total_products=total_products,
+        low_stock=low_stock,
+        out_of_stock=out_of_stock,
+        total_suppliers=total_suppliers,
+        total_valuation=total_valuation,
+        unfulfilled_count=unfulfilled_count,
+        received_count=received_count,
+        warehouses=warehouses,
         categories=categories,
-        chart_data=chart_data,
-        items=items
+        recent_purchases=recent_purchases,
+        stock_levels=stock_levels
     )
 @app.route("/expense-ledger")
 @login_required
