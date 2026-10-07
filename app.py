@@ -1793,10 +1793,10 @@ def add_transfer():
 @login_required
 def expense_ledger():
     conn = get_db()
-    
-    @app.route("/powerbi-workspaces")
-    @login_required
-    def powerbi_workspaces():
+
+@app.route("/powerbi-workspaces")
+@login_required
+def powerbi_workspaces():
     conn = get_db()
     items = conn.execute("SELECT barcode, asset_name, category, location, stock, price FROM items").fetchall()
     items_list = [dict(i) for i in items]
@@ -1804,7 +1804,7 @@ def expense_ledger():
 
     items_json = json.dumps(items_list)
     return render_template("powerbi.html", items_json=items_json)
-
+    
 @app.route("/add-expense", methods=["POST"])
 @login_required
 def add_expense():
