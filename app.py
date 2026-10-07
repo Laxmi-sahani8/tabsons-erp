@@ -1799,26 +1799,31 @@ def expense_ledger():
 def powerbi_workspaces():
     try:
         conn = get_db()
-        conn.row_factory = sqlite3.Row  # Set row_factory first
         cursor = conn.cursor()
-        items = cursor.execute("SELECT barcode, asset_name, category, location, stock, price FROM items").fetchall()
+        
+        # Select all columns directly without rigid column-name mapping
+        items = cursor.execute("SELECT * FROM items").fetchall()
         
         items_list = []
         for i in items:
+            # Row values directly read
+            row_dict = dict(i) if isinstance(i, sqlite3.Row) else {}
+            
+            # Key checks with safe fallbacks
             items_list.append({
-                "barcode": i["barcode"] if i["barcode"] is not None else "N/A",
-                "asset_name": i["asset_name"] if i["asset_name"] is not None else "N/A",
-                "category": i["category"] if i["category"] is not None else "General",
-                "location": i["location"] if i["location"] is not None else "Main",
-                "stock": i["stock"] if i["stock"] is not None else 0,
-                "price": i["price"] if i["price"] is not None else 0
+                "barcode": row_dict.get("barcode") or row_dict.get("sku") or "N/A",
+                "asset_name": row_dict.get("asset_name") or row_dict.get("name") or row_dict.get("title") or "Item",
+                "category": row_dict.get("category") or "General",
+                "location": row_dict.get("location") or row_dict.get("hub") or "Main Hub",
+                "stock": row_dict.get("stock") if row_dict.get("stock") is not None else row_dict.get("quantity", 0),
+                "price": row_dict.get("price") if row_dict.get("price") is not None else row_dict.get("cost", 0)
             })
         conn.close()
 
         items_json = json.dumps(items_list)
         return render_template("powerbi.html", items_json=items_json)
     except Exception as e:
-        print(f"Error in powerbi_workspaces: {e}")
+        print(f"Error fetching powerbi data: {e}")
         return render_template("powerbi.html", items_json="[]")
     
 @app.route("/add-expense", methods=["POST"])
