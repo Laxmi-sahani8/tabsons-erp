@@ -1786,12 +1786,6 @@ def add_transfer():
     flash("New Transfer Order Created!", "success")
     return redirect(url_for("asset_transfers"))
 
-
-
-@app.route("/expense-ledger")
-@login_required
-def expense_ledger():
-    conn = get_db()
 @app.route("/expense-ledger")
 @login_required
 def expense_ledger():
