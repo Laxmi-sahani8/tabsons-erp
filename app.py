@@ -1799,19 +1799,19 @@ def expense_ledger():
 def powerbi_workspaces():
     try:
         conn = get_db()
-        # Row factory ensure karta hai ki dict conversion sahi ho
-        conn.row_factory = sqlite3.Row
-        items = conn.execute("SELECT barcode, asset_name, category, location, stock, price FROM items").fetchall()
+        conn.row_factory = sqlite3.Row  # Set row_factory first
+        cursor = conn.cursor()
+        items = cursor.execute("SELECT barcode, asset_name, category, location, stock, price FROM items").fetchall()
         
         items_list = []
         for i in items:
             items_list.append({
-                "barcode": i["barcode"] if "barcode" in i.keys() and i["barcode"] is not None else "N/A",
-                "asset_name": i["asset_name"] if "asset_name" in i.keys() and i["asset_name"] is not None else "N/A",
-                "category": i["category"] if "category" in i.keys() and i["category"] is not None else "General",
-                "location": i["location"] if "location" in i.keys() and i["location"] is not None else "Main",
-                "stock": i["stock"] if "stock" in i.keys() and i["stock"] is not None else 0,
-                "price": i["price"] if "price" in i.keys() and i["price"] is not None else 0
+                "barcode": i["barcode"] if i["barcode"] is not None else "N/A",
+                "asset_name": i["asset_name"] if i["asset_name"] is not None else "N/A",
+                "category": i["category"] if i["category"] is not None else "General",
+                "location": i["location"] if i["location"] is not None else "Main",
+                "stock": i["stock"] if i["stock"] is not None else 0,
+                "price": i["price"] if i["price"] is not None else 0
             })
         conn.close()
 
@@ -1819,7 +1819,6 @@ def powerbi_workspaces():
         return render_template("powerbi.html", items_json=items_json)
     except Exception as e:
         print(f"Error in powerbi_workspaces: {e}")
-        # Agar koi issue aaye to empty list ke saath page load ho jayega, 500 error nahi dega
         return render_template("powerbi.html", items_json="[]")
     
 @app.route("/add-expense", methods=["POST"])
