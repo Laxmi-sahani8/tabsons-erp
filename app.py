@@ -1785,9 +1785,246 @@ def add_transfer():
     log_activity(current_user.name, "TRANSFER_STOCK", f"Created Transfer Order {trf_id}")
     flash("New Transfer Order Created!", "success")
     return redirect(url_for("asset_transfers"))
+
 @app.route("/powerbi-workspaces")
 def powerbi_workspaces():
-    return render_template('powerbi.html')
+    return """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Inventory Management Dashboard</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+        <style>
+            body { background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+            .fs-7 { font-size: 0.825rem; }
+        </style>
+    </head>
+    <body>
+    <div class="container-fluid p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+            <div>
+                <h3 class="fw-bold text-dark mb-0">Inventory Management Dashboard</h3>
+            </div>
+            <div class="d-flex align-items-center bg-white px-3 py-1 rounded border shadow-sm" style="min-width: 250px;">
+                <i class="bi bi-funnel text-muted me-2"></i>
+                <select id="warehouseSelect" class="form-select border-0 bg-transparent shadow-none fs-7">
+                    <option value="all">All Warehouses</option>
+                    <option value="King-Cole">King-Cole</option>
+                    <option value="Yundt-Mertz">Yundt-Mertz</option>
+                    <option value="Donnelly-Sipes">Donnelly-Sipes</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm p-3 bg-white rounded-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted fw-semibold">Total Products</small>
+                            <h2 class="fw-bold mb-0 mt-1">353</h2>
+                        </div>
+                        <div class="bg-light p-2 rounded"><i class="bi bi-box-seam fs-4 text-primary"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm p-3 bg-white rounded-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted fw-semibold">Low Stock</small>
+                            <h2 class="fw-bold mb-0 mt-1 text-warning">12</h2>
+                        </div>
+                        <div class="bg-light p-2 rounded"><i class="bi bi-exclamation-triangle fs-4 text-warning"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm p-3 bg-white rounded-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted fw-semibold">Out of Stock</small>
+                            <h2 class="fw-bold mb-0 mt-1 text-danger">4</h2>
+                        </div>
+                        <div class="bg-light p-2 rounded"><i class="bi bi-x-circle fs-4 text-danger"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm p-3 bg-white rounded-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted fw-semibold">Suppliers</small>
+                            <h2 class="fw-bold mb-0 mt-1 text-success">8</h2>
+                        </div>
+                        <div class="bg-light p-2 rounded"><i class="bi bi-truck fs-4 text-success"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm p-4 text-white rounded-3 h-100" style="background-color: #0b132b;">
+                    <span class="text-light fs-7">Value of Stock</span>
+                    <h2 class="fw-bold my-3 text-white">$ 19,658</h2>
+                    <hr class="border-secondary my-3">
+                    <small class="text-light fw-bold">Stock Purchases</small>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <span>Unfulfilled</span>
+                        <span class="fw-bold text-warning">4</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <span>Received</span>
+                        <span class="fw-bold text-success">1</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-9">
+                <div class="card border-0 shadow-sm p-3 bg-white rounded-3 h-100">
+                    <h6 class="fw-bold text-dark mb-1">Warehouse Stock</h6>
+                    <small class="text-muted d-block mb-3">Sales/Quantity distribution</small>
+                    <div style="height: 200px;">
+                        <canvas id="warehouseStockChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm rounded-3 bg-white p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0">Recent Purchases (Last 10 days)</h6>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="input-group input-group-sm" style="max-width: 150px;">
+                                <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" id="purchaseSearchInput" class="form-control bg-light border-start-0" placeholder="Search..." onkeyup="filterPurchases()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle fs-7 mb-0" id="purchasesTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Supplier</th>
+                                    <th>OrderDate</th>
+                                    <th>Status</th>
+                                    <th>Prod...</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td class="fw-bold">Thembe</td><td>Mon Sep 26 2022</td><td><span class="badge bg-warning text-dark">UNFULFILLED</span></td><td>5</td></tr>
+                                <tr><td class="fw-bold">pix</td><td>Mon Mar 20 2023</td><td><span class="badge bg-warning text-dark">UNFULFILLED</span></td><td>5</td></tr>
+                                <tr><td class="fw-bold">Samancor Haulage</td><td>Tue Mar 21 2023</td><td><span class="badge bg-warning text-dark">UNFULFILLED</span></td><td>5</td></tr>
+                                <tr><td class="fw-bold">Donnelly Vendors</td><td>Sat Jun 25 2022</td><td><span class="badge bg-warning text-dark">UNFULFILLED</span></td><td>5</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm rounded-3 bg-white p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0">Stock Levels</h6>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="d-flex align-items-center border rounded bg-light px-2" style="height: 31px;">
+                                <i class="bi bi-funnel text-muted me-1 fs-7"></i>
+                                <select id="stockCategorySelect" class="form-select border-0 bg-transparent shadow-none fs-7 p-0" style="min-width: 90px;" onchange="filterStock()">
+                                    <option value="all">Stock level</option>
+                                    <option value="OTHER">OTHER</option>
+                                    <option value="Drop Raise">Drop Raise</option>
+                                    <option value="Haulage">Haulage</option>
+                                </select>
+                            </div>
+                            <div class="input-group input-group-sm" style="max-width: 130px;">
+                                <input type="text" id="stockSearchInput" class="form-control bg-light" placeholder="Search..." onkeyup="filterStock()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle fs-7 mb-0" id="stockTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Image</th>
+                                    <th>Name</th>
+                                    <th>Category</th>
+                                    <th>Stock</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr data-category="OTHER"><td><i class="bi bi-box-seam text-secondary fs-5"></i></td><td class="fw-bold product-name">lakshman</td><td>OTHER</td><td><span class="text-success fw-bold">49</span></td></tr>
+                                <tr data-category="OTHER"><td><i class="bi bi-image text-secondary fs-5"></i></td><td class="fw-bold product-name">Remera blanca y verde</td><td>OTHER</td><td><span class="text-success fw-bold">41</span></td></tr>
+                                <tr data-category="Drop Raise"><td><i class="bi bi-box-seam text-secondary fs-5"></i></td><td class="fw-bold product-name">Impala</td><td>Drop Raise</td><td><span class="text-success fw-bold">1536</span></td></tr>
+                                <tr data-category="Haulage"><td><i class="bi bi-box-seam text-secondary fs-5"></i></td><td class="fw-bold product-name">Angla</td><td>Haulage</td><td><span class="text-success fw-bold">1440</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        function filterPurchases() {
+            let input = document.getElementById("purchaseSearchInput").value.toLowerCase();
+            let rows = document.querySelectorAll("#purchasesTable tbody tr");
+            rows.forEach(row => {
+                let text = row.cells[0] ? row.cells[0].textContent.toLowerCase() : "";
+                row.style.display = text.includes(input) ? "" : "none";
+            });
+        }
+
+        function filterStock() {
+            let search = document.getElementById("stockSearchInput").value.toLowerCase();
+            let cat = document.getElementById("stockCategorySelect").value;
+            let rows = document.querySelectorAll("#stockTable tbody tr");
+
+            rows.forEach(row => {
+                let nameCell = row.querySelector(".product-name");
+                if (nameCell) {
+                    let name = nameCell.textContent.toLowerCase();
+                    let category = row.getAttribute("data-category");
+
+                    let matchesSearch = name.includes(search);
+                    let matchesCat = (cat === "all" || category === cat);
+
+                    row.style.display = (matchesSearch && matchesCat) ? "" : "none";
+                }
+            });
+        }
+
+        const ctx = document.getElementById('warehouseStockChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['King-Cole', 'Yundt-Mertz', 'Donnelly-Sipes'],
+                datasets: [{
+                    label: 'Sales/Quantity',
+                    data: [120, 450, 1850],
+                    backgroundColor: '#0f172a',
+                    borderRadius: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    </script>
+    </body>
+    </html>
+    """
+
 @app.route("/expense-ledger")
 @login_required
 def expense_ledger():
