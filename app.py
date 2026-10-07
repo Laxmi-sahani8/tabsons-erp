@@ -1803,7 +1803,7 @@ def powerbi_workspaces():
     conn.close()
 
     items_json = json.dumps(items_list)
-
+    return render_template("powerbi.html", items_json=items_json)
     html_template = """
     <!DOCTYPE html>
     <html lang="en">
