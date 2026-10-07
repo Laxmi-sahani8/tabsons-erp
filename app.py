@@ -1793,6 +1793,13 @@ def add_transfer():
 @login_required
 def expense_ledger():
     conn = get_db()
+@app.route("/expense-ledger")
+@login_required
+def expense_ledger():
+    conn = get_db()
+    expenses = conn.execute("SELECT * FROM expenses ORDER BY date_recorded DESC").fetchall()
+    conn.close()
+    return render_template("expense_ledger.html", expenses=expenses)
 
 @app.route("/powerbi-workspaces")
 @login_required
