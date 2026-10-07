@@ -1785,14 +1785,24 @@ def add_transfer():
     log_activity(current_user.name, "TRANSFER_STOCK", f"Created Transfer Order {trf_id}")
     flash("New Transfer Order Created!", "success")
     return redirect(url_for("asset_transfers"))
-
 @app.route("/expense-ledger")
 @login_required
 def expense_ledger():
-    conn = get_db()
-    expenses = conn.execute("SELECT * FROM expenses ORDER BY date_recorded DESC").fetchall()
-    conn.close()
-    return render_template("expense_ledger.html", expenses=expenses)
+    try:
+        conn = get_db()
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Pehle check karein ki expenses table exist karta hai ya nahi
+        cursor.execute("CREATE TABLE IF NOT EXISTS expenses (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, category TEXT, amount REAL, added_by TEXT, date_recorded TEXT)")
+        conn.commit()
+
+        expenses = cursor.execute("SELECT * FROM expenses ORDER BY id DESC").fetchall()
+        conn.close()
+        return render_template("expense_ledger.html", expenses=expenses)
+    except Exception as e:
+        print(f"Error in expense_ledger: {e}")
+        return render_template("expense_ledger.html", expenses=[])
 
 @app.route("/powerbi-workspaces")
 @login_required
