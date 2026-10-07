@@ -1,20 +1,19 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid py-3">
-    <!-- Header with Warehouse Filter -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-fluid py-3" style="background-color: #f8fafc;">
+    <!-- Top Bar: Title & Main Warehouse Filter -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
         <div>
-            <h3 class="fw-bold text-dark">Inventory Management Dashboard</h3>
-            <p class="text-muted mb-0">Real-time warehouse stock, suppliers, and purchase analytics</p>
+            <h3 class="fw-bold text-dark mb-0">Inventory Management Dashboard</h3>
         </div>
-        <div class="d-flex align-items-center bg-white p-2 rounded shadow-sm border">
-            <i class="bi bi-funnel-fill me-2 text-primary"></i>
-            <select id="warehouseFilter" class="form-select border-0 bg-transparent fw-semibold" onchange="filterWarehouseData()">
+        <div class="d-flex align-items-center bg-white px-3 py-1 rounded border shadow-sm" style="min-width: 250px;">
+            <i class="bi bi-funnel text-muted me-2"></i>
+            <select id="warehouseSelect" class="form-select border-0 bg-transparent shadow-none font-monospace fs-7" onchange="applyFilters()">
                 <option value="all">All Warehouses</option>
-                <option value="lakshman" selected>Lakshman Warehouse</option>
-                <option value="yundt">Yundt-Mertz</option>
-                <option value="donnelly">Donnelly-Sipes</option>
+                {% for wh in warehouses %}
+                    <option value="{{ wh }}">{{ wh }}</option>
+                {% endfor %}
             </select>
         </div>
     </div>
@@ -22,143 +21,167 @@
     <!-- Top KPI Row -->
     <div class="row g-3 mb-4">
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white">
+            <div class="card border-0 shadow-sm p-3 bg-white rounded-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <span class="text-muted fs-7 fw-bold text-uppercase">Total Products</span>
-                        <h2 class="fw-bold mt-1 mb-0" id="kpiTotalProducts">11</h2>
+                        <small class="text-muted fw-semibold">Total Products</small>
+                        <h2 class="fw-bold mb-0 mt-1">{{ total_products }}</h2>
                     </div>
-                    <div class="bg-primary-subtle p-3 rounded-circle text-primary">
-                        <i class="bi bi-box-seam fs-4"></i>
-                    </div>
+                    <div class="bg-light p-2 rounded"><i class="bi bi-box-seam fs-4 text-primary"></i></div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white">
+            <div class="card border-0 shadow-sm p-3 bg-white rounded-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <span class="text-muted fs-7 fw-bold text-uppercase">Low Stock</span>
-                        <h2 class="fw-bold text-warning mt-1 mb-0" id="kpiLowStock">2</h2>
+                        <small class="text-muted fw-semibold">Low Stock</small>
+                        <h2 class="fw-bold mb-0 mt-1 text-warning">{{ low_stock }}</h2>
                     </div>
-                    <div class="bg-warning-subtle p-3 rounded-circle text-warning">
-                        <i class="bi bi-exclamation-triangle fs-4"></i>
-                    </div>
+                    <div class="bg-light p-2 rounded"><i class="bi bi-exclamation-triangle fs-4 text-warning"></i></div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white">
+            <div class="card border-0 shadow-sm p-3 bg-white rounded-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <span class="text-muted fs-7 fw-bold text-uppercase">Out of Stock</span>
-                        <h2 class="fw-bold text-danger mt-1 mb-0" id="kpiOutOfStock">2</h2>
+                        <small class="text-muted fw-semibold">Out of Stock</small>
+                        <h2 class="fw-bold mb-0 mt-1 text-danger">{{ out_of_stock }}</h2>
                     </div>
-                    <div class="bg-danger-subtle p-3 rounded-circle text-danger">
-                        <i class="bi bi-x-circle fs-4"></i>
-                    </div>
+                    <div class="bg-light p-2 rounded"><i class="bi bi-x-circle fs-4 text-danger"></i></div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white">
+            <div class="card border-0 shadow-sm p-3 bg-white rounded-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <span class="text-muted fs-7 fw-bold text-uppercase">Suppliers</span>
-                        <h2 class="fw-bold text-success mt-1 mb-0" id="kpiSuppliers">5</h2>
+                        <small class="text-muted fw-semibold">Suppliers</small>
+                        <h2 class="fw-bold mb-0 mt-1 text-success">{{ total_suppliers }}</h2>
                     </div>
-                    <div class="bg-success-subtle p-3 rounded-circle text-success">
-                        <i class="bi bi-truck fs-4"></i>
-                    </div>
+                    <div class="bg-light p-2 rounded"><i class="bi bi-truck fs-4 text-success"></i></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Analytics & Stock Chart Row -->
+    <!-- Valuation & Bar Chart Row -->
     <div class="row g-3 mb-4">
-        <!-- Stock Value Card -->
+        <!-- Stock Value & Purchases -->
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm p-4 bg-dark text-white rounded-3 h-100">
-                <span class="text-light fs-7 text-uppercase">Value of Stock</span>
-                <h1 class="fw-bold my-3 text-info" id="kpiStockValue">$19,658</h1>
-                <hr class="border-secondary">
-                <h6 class="fw-bold text-uppercase text-muted fs-7 mb-3">Stock Purchases</h6>
-                <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="card border-0 shadow-sm p-4 text-white rounded-3 h-100" style="background-color: #0b132b;">
+                <span class="text-light fs-7">Value of Stock</span>
+                <h2 class="fw-bold my-3 text-white">$ {{ "{:,.0f}".format(total_valuation) }}</h2>
+                <hr class="border-secondary my-3">
+                <small class="text-light fw-bold">Stock Purchases</small>
+                <div class="d-flex justify-content-between align-items-center mt-3">
                     <span>Unfulfilled</span>
-                    <span class="badge bg-warning text-dark fs-6" id="kpiUnfulfilled">4</span>
+                    <span class="fw-bold text-warning">{{ unfulfilled_count }}</span>
                 </div>
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center mt-2">
                     <span>Received</span>
-                    <span class="badge bg-success fs-6" id="kpiReceived">1</span>
+                    <span class="fw-bold text-success">{{ received_count }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- Warehouse Stock Bar Chart -->
+        <!-- Warehouse Stock Chart -->
         <div class="col-md-9">
-            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white h-100">
-                <h5 class="fw-bold text-dark mb-3">Warehouse Stock Analytics</h5>
-                <div style="height: 250px;">
+            <div class="card border-0 shadow-sm p-3 bg-white rounded-3 h-100">
+                <h6 class="fw-bold text-dark mb-1">Warehouse Stock</h6>
+                <small class="text-muted d-block mb-3">Sales/Quantity distribution</small>
+                <div style="height: 220px;">
                     <canvas id="warehouseStockChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tables Row -->
+    <!-- Dual Tables Row (Demo Matching Layout) -->
     <div class="row g-3">
-        <!-- Recent Purchases Table -->
+        <!-- Left Table: Recent Purchases (With Search & Pagination) -->
         <div class="col-md-6">
             <div class="card border-0 shadow-sm rounded-3 bg-white p-3">
-                <h6 class="fw-bold mb-3">Recent Purchases (Last 10 days)</h6>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0">Recent Purchases (Last 10 days)</h6>
+                    <div class="d-flex align-items-center gap-2">
+                        <!-- Search Box -->
+                        <div class="input-group input-group-sm" style="max-width: 150px;">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" id="purchaseSearchInput" class="form-control bg-light border-start-0" placeholder="Search..." onkeyup="filterPurchases()">
+                        </div>
+                        <!-- Pagination UI -->
+                        <div class="btn-group btn-group-sm border rounded">
+                            <button class="btn btn-light border-0" onclick="prevPurchasePage()">&lt;</button>
+                            <span class="btn btn-light border-0 disabled text-dark fw-normal" id="purchasePageLabel">Page 1 of 1</span>
+                            <button class="btn btn-light border-0" onclick="nextPurchasePage()">&gt;</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
-                    <table class="table align-middle table-hover fs-7">
+                    <table class="table table-hover align-middle fs-7 mb-0" id="purchasesTable">
                         <thead class="table-light">
                             <tr>
                                 <th>Supplier</th>
-                                <th>Order Date</th>
+                                <th>OrderDate</th>
                                 <th>Status</th>
-                                <th>Items</th>
+                                <th>Prod...</th>
                             </tr>
                         </thead>
                         <tbody>
+                            {% for p in recent_purchases %}
                             <tr>
-                                <td class="fw-bold">Thembe</td>
-                                <td>Mon Sep 26 2022</td>
-                                <td><span class="badge bg-warning text-dark">UNFULFILLED</span></td>
-                                <td>5</td>
+                                <td class="fw-bold text-secondary">{{ p.supplier }}</td>
+                                <td class="text-muted">{{ p.order_date }}</td>
+                                <td>
+                                    <span class="badge bg-warning-subtle text-warning-emphasis fw-semibold">
+                                        {{ p.status }}
+                                    </span>
+                                </td>
+                                <td>{{ p.product_count }}</td>
                             </tr>
-                            <tr>
-                                <td class="fw-bold">pix</td>
-                                <td>Mon Mar 20 2023</td>
-                                <td><span class="badge bg-warning text-dark">UNFULFILLED</span></td>
-                                <td>5</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Samancor Haulage</td>
-                                <td>Tue Mar 21 2023</td>
-                                <td><span class="badge bg-warning text-dark">UNFULFILLED</span></td>
-                                <td>5</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Donnelly Vendors</td>
-                                <td>Sat Jun 25 2022</td>
-                                <td><span class="badge bg-success">RECEIVED</span></td>
-                                <td>8</td>
-                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" class="text-center text-muted">No purchase records found</td></tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- Stock Levels with Product Thumbnails -->
+        <!-- Right Table: Stock Levels (With Search, Category Filter & Pagination) -->
         <div class="col-md-6">
             <div class="card border-0 shadow-sm rounded-3 bg-white p-3">
-                <h6 class="fw-bold mb-3">Stock Levels</h6>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0">Stock Levels</h6>
+                    <div class="d-flex align-items-center gap-2">
+                        <!-- Category Filter Dropdown -->
+                        <div class="d-flex align-items-center border rounded bg-light px-2" style="height: 31px;">
+                            <i class="bi bi-funnel text-muted me-1 fs-7"></i>
+                            <select id="stockCategorySelect" class="form-select border-0 bg-transparent shadow-none fs-7 p-0" style="min-width: 100px;" onchange="filterStock()">
+                                <option value="all">Stock level</option>
+                                {% for cat in categories %}
+                                    <option value="{{ cat }}">{{ cat }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <!-- Search Box -->
+                        <div class="input-group input-group-sm" style="max-width: 140px;">
+                            <input type="text" id="stockSearchInput" class="form-control bg-light" placeholder="Search..." onkeyup="filterStock()">
+                        </div>
+                        <!-- Pagination UI -->
+                        <div class="btn-group btn-group-sm border rounded">
+                            <button class="btn btn-light border-0" onclick="prevStockPage()">&lt;</button>
+                            <span class="btn btn-light border-0 disabled text-dark fw-normal" id="stockPageLabel">Page 1 of 1</span>
+                            <button class="btn btn-light border-0" onclick="nextStockPage()">&gt;</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
-                    <table class="table align-middle table-hover fs-7">
+                    <table class="table table-hover align-middle fs-7 mb-0" id="stockTable">
                         <thead class="table-light">
                             <tr>
                                 <th>Image</th>
@@ -168,30 +191,22 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td><img src="https://via.placeholder.com/35" class="rounded border" alt="item"></td>
-                                <td class="fw-bold">Lakshman Unit SKU</td>
-                                <td>OTHER</td>
-                                <td><span class="badge bg-primary fs-7">49</span></td>
+                            {% for item in stock_levels %}
+                            <tr data-category="{{ item.category }}">
+                                <td>
+                                    {% if item.image_url %}
+                                        <img src="{{ item.image_url }}" width="28" height="28" class="rounded border object-fit-cover" alt="img">
+                                    {% else %}
+                                        <i class="bi bi-box-seam text-muted fs-6"></i>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-semibold text-dark product-name">{{ item.product_name }}</td>
+                                <td class="text-muted">{{ item.category }}</td>
+                                <td><span class="fw-bold text-success">{{ item.quantity }}</span></td>
                             </tr>
-                            <tr>
-                                <td><img src="https://via.placeholder.com/35" class="rounded border" alt="item"></td>
-                                <td class="fw-bold">Remera blanca y verde</td>
-                                <td>OTHER</td>
-                                <td><span class="badge bg-primary fs-7">41</span></td>
-                            </tr>
-                            <tr>
-                                <td><img src="https://via.placeholder.com/35" class="rounded border" alt="item"></td>
-                                <td class="fw-bold">Impala Industrial</td>
-                                <td>Drop Raise</td>
-                                <td><span class="badge bg-success fs-7">1536</span></td>
-                            </tr>
-                            <tr>
-                                <td><img src="https://via.placeholder.com/35" class="rounded border" alt="item"></td>
-                                <td class="fw-bold">Angla Haulage</td>
-                                <td>Haulage</td>
-                                <td><span class="badge bg-success fs-7">1440</span></td>
-                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" class="text-center text-muted">No stock data found</td></tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -200,19 +215,50 @@
     </div>
 </div>
 
-<!-- Chart.js Script -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    // Live Dynamic Search Filter for Recent Purchases Table
+    function filterPurchases() {
+        let input = document.getElementById("purchaseSearchInput").value.toLowerCase();
+        let rows = document.querySelectorAll("#purchasesTable tbody tr");
+
+        rows.forEach(row => {
+            let text = row.cells[0] ? row.cells[0].textContent.toLowerCase() : "";
+            row.style.display = text.includes(input) ? "" : "none";
+        });
+    }
+
+    // Live Dynamic Search & Category Filter for Stock Levels Table
+    function filterStock() {
+        let search = document.getElementById("stockSearchInput").value.toLowerCase();
+        let cat = document.getElementById("stockCategorySelect").value;
+        let rows = document.querySelectorAll("#stockTable tbody tr");
+
+        rows.forEach(row => {
+            let nameCell = row.querySelector(".product-name");
+            if (nameCell) {
+                let name = nameCell.textContent.toLowerCase();
+                let category = row.getAttribute("data-category");
+
+                let matchesSearch = name.includes(search);
+                let matchesCat = (cat === "all" || category === cat);
+
+                row.style.display = (matchesSearch && matchesCat) ? "" : "none";
+            }
+        });
+    }
+
+    // Initialize Stock Bar Chart
     const ctx = document.getElementById('warehouseStockChart').getContext('2d');
-    let warehouseChart = new Chart(ctx, {
+    new Chart(ctx, {
         type: 'bar',
         data: {
             labels: ['King-Cole', 'Yundt-Mertz', 'Donnelly-Sipes'],
             datasets: [{
-                label: 'Stock Quantity',
+                label: 'Sales/Quantity',
                 data: [120, 450, 1850],
-                backgroundColor: '#1e293b',
-                borderRadius: 4
+                backgroundColor: '#0f172a',
+                borderRadius: 2
             }]
         },
         options: {
@@ -221,15 +267,5 @@
             plugins: { legend: { display: false } }
         }
     });
-
-    function filterWarehouseData() {
-        const selected = document.getElementById('warehouseFilter').value;
-        if(selected === 'lakshman') {
-            warehouseChart.data.datasets[0].data = [120, 450, 1850];
-        } else {
-            warehouseChart.data.datasets[0].data = [300, 200, 900];
-        }
-        warehouseChart.update();
-    }
 </script>
 {% endblock %}
