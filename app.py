@@ -1811,7 +1811,7 @@ def powerbi_workspaces():
     conn.close()
 
     return render_template(
-        'dashboard.html',
+        'powerbi.html',
         total_products=total_products,
         low_stock=low_stock,
         out_of_stock=out_of_stock,
