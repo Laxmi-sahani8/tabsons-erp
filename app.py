@@ -1785,24 +1785,88 @@ def add_transfer():
     log_activity(current_user.name, "TRANSFER_STOCK", f"Created Transfer Order {trf_id}")
     flash("New Transfer Order Created!", "success")
     return redirect(url_for("asset_transfers"))
+
 @app.route("/expense-ledger")
 @login_required
 def expense_ledger():
+    expenses_list = []
     try:
-        conn = get_db()
+        conn = sqlite3.connect(DATABASE)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Pehle check karein ki expenses table exist karta hai ya nahi
-        cursor.execute("CREATE TABLE IF NOT EXISTS expenses (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, category TEXT, amount REAL, added_by TEXT, date_recorded TEXT)")
+        # Auto-create expenses table if it does not exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS expenses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                category TEXT,
+                amount REAL,
+                added_by TEXT,
+                date_recorded TEXT
+            )
+        """)
         conn.commit()
 
-        expenses = cursor.execute("SELECT * FROM expenses ORDER BY id DESC").fetchall()
+        rows = cursor.execute("SELECT * FROM expenses ORDER BY id DESC").fetchall()
+        for r in rows:
+            expenses_list.append(dict(r))
         conn.close()
-        return render_template("expense_ledger.html", expenses=expenses)
+
     except Exception as e:
-        print(f"Error in expense_ledger: {e}")
-        return render_template("expense_ledger.html", expenses=[])
+        print(f"Database Error in expense_ledger: {e}")
+
+    # Fallback to render template or inline HTML if template is missing
+    try:
+        return render_template("expense_ledger.html", expenses=expenses_list)
+    except Exception as t_err:
+        return render_template_string("""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Expense Ledger</title>
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+            </head>
+            <body class="p-4 bg-light">
+                <div class="container bg-white p-4 rounded shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2>Expense Ledger</h2>
+                        <a href="/" class="btn btn-primary btn-sm">Back to Dashboard</a>
+                    </div>
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Added By</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if expenses %}
+                                {% for exp in expenses %}
+                                <tr>
+                                    <td>{{ exp.id }}</td>
+                                    <td>{{ exp.title }}</td>
+                                    <td>{{ exp.category }}</td>
+                                    <td>₹{{ exp.amount }}</td>
+                                    <td>{{ exp.added_by }}</td>
+                                    <td>{{ exp.date_recorded }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">No expense records found.</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </body>
+            </html>
+        """, expenses=expenses_list)
 
 @app.route("/powerbi-workspaces")
 @login_required
