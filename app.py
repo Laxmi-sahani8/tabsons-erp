@@ -1787,25 +1787,7 @@ def add_transfer():
     return redirect(url_for("asset_transfers"))
 @app.route("/powerbi-workspaces")
 def powerbi_workspaces():
-    try:
-        conn = get_db()
-        stock_levels = conn.execute("SELECT image_url, asset_name, category, quantity FROM inventory ORDER BY id DESC").fetchall()
-        recent_purchases = conn.execute("SELECT supplier, order_date, status, product_count FROM purchases ORDER BY id DESC LIMIT 10").fetchall()
-        conn.close()
-    except Exception as e:
-        stock_levels = []
-        recent_purchases = []
-
-    return render_template(
-        'powerbi.html',
-        stock_levels=stock_levels,
-        recent_purchases=recent_purchases,
-        total_products=353,
-        low_stock=12,
-        out_of_stock=4,
-        total_suppliers=8,
-        total_valuation=19658
-    )
+    return render_template('powerbi.html')
 @app.route("/expense-ledger")
 @login_required
 def expense_ledger():

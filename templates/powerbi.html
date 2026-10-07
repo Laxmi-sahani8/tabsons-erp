@@ -1,31 +1,42 @@
-{% extends "base.html" %}
-
-{% block content %}
-<div class="container-fluid py-3" style="background-color: #f8fafc;">
-    <!-- Top Bar: Title & Main Warehouse Filter -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Management Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .fs-7 { font-size: 0.825rem; }
+    </style>
+</head>
+<body>
+<div class="container-fluid p-4">
+    <!-- Top Header & Warehouse Filter -->
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
         <div>
             <h3 class="fw-bold text-dark mb-0">Inventory Management Dashboard</h3>
         </div>
         <div class="d-flex align-items-center bg-white px-3 py-1 rounded border shadow-sm" style="min-width: 250px;">
             <i class="bi bi-funnel text-muted me-2"></i>
-            <select id="warehouseSelect" class="form-select border-0 bg-transparent shadow-none fs-7" onchange="filterStock()">
+            <select id="warehouseSelect" class="form-select border-0 bg-transparent shadow-none fs-7">
                 <option value="all">All Warehouses</option>
-                {% for wh in warehouses %}
-                    <option value="{{ wh }}">{{ wh }}</option>
-                {% endfor %}
+                <option value="King-Cole">King-Cole</option>
+                <option value="Yundt-Mertz">Yundt-Mertz</option>
+                <option value="Donnelly-Sipes">Donnelly-Sipes</option>
             </select>
         </div>
     </div>
 
-    <!-- Top KPI Row -->
+    <!-- Top KPI Cards -->
     <div class="row g-3 mb-4">
         <div class="col-md-3">
             <div class="card border-0 shadow-sm p-3 bg-white rounded-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <small class="text-muted fw-semibold">Total Products</small>
-                        <h2 class="fw-bold mb-0 mt-1">{{ total_products if total_products else 11 }}</h2>
+                        <h2 class="fw-bold mb-0 mt-1">353</h2>
                     </div>
                     <div class="bg-light p-2 rounded"><i class="bi bi-box-seam fs-4 text-primary"></i></div>
                 </div>
@@ -36,7 +47,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <small class="text-muted fw-semibold">Low Stock</small>
-                        <h2 class="fw-bold mb-0 mt-1 text-warning">{{ low_stock if low_stock else 2 }}</h2>
+                        <h2 class="fw-bold mb-0 mt-1 text-warning">12</h2>
                     </div>
                     <div class="bg-light p-2 rounded"><i class="bi bi-exclamation-triangle fs-4 text-warning"></i></div>
                 </div>
@@ -47,7 +58,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <small class="text-muted fw-semibold">Out of Stock</small>
-                        <h2 class="fw-bold mb-0 mt-1 text-danger">{{ out_of_stock if out_of_stock else 2 }}</h2>
+                        <h2 class="fw-bold mb-0 mt-1 text-danger">4</h2>
                     </div>
                     <div class="bg-light p-2 rounded"><i class="bi bi-x-circle fs-4 text-danger"></i></div>
                 </div>
@@ -58,7 +69,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <small class="text-muted fw-semibold">Suppliers</small>
-                        <h2 class="fw-bold mb-0 mt-1 text-success">{{ total_suppliers if total_suppliers else 5 }}</h2>
+                        <h2 class="fw-bold mb-0 mt-1 text-success">8</h2>
                     </div>
                     <div class="bg-light p-2 rounded"><i class="bi bi-truck fs-4 text-success"></i></div>
                 </div>
@@ -66,21 +77,21 @@
         </div>
     </div>
 
-    <!-- Stock Valuation & Purchases Summary -->
+    <!-- Chart & Valuation Section -->
     <div class="row g-3 mb-4">
         <div class="col-md-3">
             <div class="card border-0 shadow-sm p-4 text-white rounded-3 h-100" style="background-color: #0b132b;">
                 <span class="text-light fs-7">Value of Stock</span>
-                <h2 class="fw-bold my-3 text-white">$ {{ "{:,.0f}".format(total_valuation) if total_valuation else "19,658" }}</h2>
+                <h2 class="fw-bold my-3 text-white">$ 19,658</h2>
                 <hr class="border-secondary my-3">
                 <small class="text-light fw-bold">Stock Purchases</small>
                 <div class="d-flex justify-content-between align-items-center mt-3">
                     <span>Unfulfilled</span>
-                    <span class="fw-bold text-warning">{{ unfulfilled_count if unfulfilled_count else 4 }}</span>
+                    <span class="fw-bold text-warning">4</span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center mt-2">
                     <span>Received</span>
-                    <span class="fw-bold text-success">{{ received_count if received_count else 1 }}</span>
+                    <span class="fw-bold text-success">1</span>
                 </div>
             </div>
         </div>
@@ -89,16 +100,16 @@
             <div class="card border-0 shadow-sm p-3 bg-white rounded-3 h-100">
                 <h6 class="fw-bold text-dark mb-1">Warehouse Stock</h6>
                 <small class="text-muted d-block mb-3">Sales/Quantity distribution</small>
-                <div style="height: 220px;">
+                <div style="height: 200px;">
                     <canvas id="warehouseStockChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- HR Demo Matching Dual Tables with Search -->
+    <!-- Dual Tables with Working Search Bars -->
     <div class="row g-3">
-        <!-- Left Table: Recent Purchases -->
+        <!-- Recent Purchases Table -->
         <div class="col-md-6">
             <div class="card border-0 shadow-sm rounded-3 bg-white p-3">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -125,28 +136,17 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% if recent_purchases %}
-                                {% for p in recent_purchases %}
-                                <tr>
-                                    <td class="fw-bold text-secondary">{{ p.supplier }}</td>
-                                    <td class="text-muted">{{ p.order_date }}</td>
-                                    <td><span class="badge bg-warning-subtle text-warning-emphasis fw-semibold">{{ p.status }}</span></td>
-                                    <td>{{ p.product_count }}</td>
-                                </tr>
-                                {% endfor %}
-                            {% else %}
-                                <tr><td class="fw-bold">Thembe</td><td>Mon Sep 26 2022</td><td><span class="badge bg-warning text-dark">UNFULFILLED</span></td><td>5</td></tr>
-                                <tr><td class="fw-bold">pix</td><td>Mon Mar 20 2023</td><td><span class="badge bg-warning text-dark">UNFULFILLED</span></td><td>5</td></tr>
-                                <tr><td class="fw-bold">Samancor Haulage</td><td>Tue Mar 21 2023</td><td><span class="badge bg-warning text-dark">UNFULFILLED</span></td><td>5</td></tr>
-                                <tr><td class="fw-bold">Donnelly Vendors</td><td>Sat Jun 25 2022</td><td><span class="badge bg-warning text-dark">UNFULFILLED</span></td><td>5</td></tr>
-                            {% endif %}
+                            <tr><td class="fw-bold">Thembe</td><td>Mon Sep 26 2022</td><td><span class="badge bg-warning text-dark">UNFULFILLED</span></td><td>5</td></tr>
+                            <tr><td class="fw-bold">pix</td><td>Mon Mar 20 2023</td><td><span class="badge bg-warning text-dark">UNFULFILLED</span></td><td>5</td></tr>
+                            <tr><td class="fw-bold">Samancor Haulage</td><td>Tue Mar 21 2023</td><td><span class="badge bg-warning text-dark">UNFULFILLED</span></td><td>5</td></tr>
+                            <tr><td class="fw-bold">Donnelly Vendors</td><td>Sat Jun 25 2022</td><td><span class="badge bg-warning text-dark">UNFULFILLED</span></td><td>5</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- Right Table: Stock Levels (With Working Category & Text Search) -->
+        <!-- Stock Levels Table with Real-time Search -->
         <div class="col-md-6">
             <div class="card border-0 shadow-sm rounded-3 bg-white p-3">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -181,21 +181,10 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% if stock_levels %}
-                                {% for item in stock_levels %}
-                                <tr data-category="{{ item.category }}">
-                                    <td><i class="bi bi-box-seam text-muted fs-6"></i></td>
-                                    <td class="fw-semibold text-dark product-name">{{ item.product_name }}</td>
-                                    <td class="text-muted">{{ item.category }}</td>
-                                    <td><span class="fw-bold text-success">{{ item.quantity }}</span></td>
-                                </tr>
-                                {% endfor %}
-                            {% else %}
-                                <tr data-category="OTHER"><td><i class="bi bi-box-seam text-secondary fs-5"></i></td><td class="fw-bold product-name">lakshman</td><td>OTHER</td><td><span class="text-success fw-bold">49</span></td></tr>
-                                <tr data-category="OTHER"><td><i class="bi bi-image text-secondary fs-5"></i></td><td class="fw-bold product-name">Remera blanca y verde</td><td>OTHER</td><td><span class="text-success fw-bold">41</span></td></tr>
-                                <tr data-category="Drop Raise"><td><i class="bi bi-box-seam text-secondary fs-5"></i></td><td class="fw-bold product-name">Impala</td><td>Drop Raise</td><td><span class="text-success fw-bold">1536</span></td></tr>
-                                <tr data-category="Haulage"><td><i class="bi bi-box-seam text-secondary fs-5"></i></td><td class="fw-bold product-name">Angla</td><td>Haulage</td><td><span class="text-success fw-bold">1440</span></td></tr>
-                            {% endif %}
+                            <tr data-category="OTHER"><td><i class="bi bi-box-seam text-secondary fs-5"></i></td><td class="fw-bold product-name">lakshman</td><td>OTHER</td><td><span class="text-success fw-bold">49</span></td></tr>
+                            <tr data-category="OTHER"><td><i class="bi bi-image text-secondary fs-5"></i></td><td class="fw-bold product-name">Remera blanca y verde</td><td>OTHER</td><td><span class="text-success fw-bold">41</span></td></tr>
+                            <tr data-category="Drop Raise"><td><i class="bi bi-box-seam text-secondary fs-5"></i></td><td class="fw-bold product-name">Impala</td><td>Drop Raise</td><td><span class="text-success fw-bold">1536</span></td></tr>
+                            <tr data-category="Haulage"><td><i class="bi bi-box-seam text-secondary fs-5"></i></td><td class="fw-bold product-name">Angla</td><td>Haulage</td><td><span class="text-success fw-bold">1440</span></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -253,4 +242,5 @@
         }
     });
 </script>
-{% endblock %}
+</body>
+</html>
