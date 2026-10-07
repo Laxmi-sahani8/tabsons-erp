@@ -3,8 +3,7 @@ import sqlite3
 import json
 from datetime import datetime
 import pandas as pd
-from flask import render_template_string, json
-from flask import Flask, render_template_string, request, redirect, url_for, flash, send_file
+from flask import Flask, render_template, render_template_string, request, redirect, url_for, flash, jsonify, send_file
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
