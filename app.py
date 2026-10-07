@@ -1791,7 +1791,10 @@ def add_transfer():
 @app.route("/expense-ledger")
 @login_required
 def expense_ledger():
-    conn = get_db()@app.route("/powerbi-workspaces")
+    conn = get_db()
+    
+
+@app.route("/powerbi-workspaces")
 def powerbi_workspaces():
     return """
     <!DOCTYPE html>
