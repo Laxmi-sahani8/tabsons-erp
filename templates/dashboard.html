@@ -1,176 +1,235 @@
 {% extends "base.html" %}
+
 {% block content %}
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
- /* Bootstrap ka default button styling kill karne ke liye override */
-.action-icon-clean {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-  padding: 6px !important;
-  margin: 0 !important;
-  color: #64748b !important; /* Neutral Professional Gray */
-  font-size: 1.05rem !important;
-  cursor: pointer !important;
-  border-radius: 6px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  text-decoration: none !important;
-  transition: all 0.2s ease-in-out !important;
-}
-
-/* Hover par subtle soft gray background (Minimalist SaaS style) */
-.action-icon-clean:hover {
-  background-color: #f1f5f9 !important;
-  color: #0f172a !important;
-}
-
-/* Delete icon par soft red hover effect */
-.action-delete-btn:hover {
-  background-color: #fef2f2 !important;
-  color: #dc2626 !important;
-}
-</style>
-
-<div class="container-fluid px-4 py-4">
-
-  <!-- Universal Single Inspection Search Bar -->
-  <div class="card-custom mb-4 shadow">
-    <h6 class="fw-bold text-warning mb-2"><i class="fa-solid fa-magnifying-glass me-1"></i> Quick Barcode / Item Details Inspector</h6>
-    <div class="input-group">
-      <input type="text" id="searchInput" class="form-control bg-dark text-white border-secondary" placeholder="Enter Barcode (e.g., TAB-1001) or Product Name to inspect full records...">
-      <button class="btn btn-warning fw-bold" onclick="performLookup()">Inspect Record</button>
-    </div>
-    <div id="searchResult" class="mt-3 d-none"></div>
-  </div>
-
-  <!-- Summary KPI Cards -->
-  <div class="row g-3 mb-4">
-    <div class="col-md-3">
-      <div class="card-custom shadow-sm">
-        <small class="text-muted text-uppercase fw-bold"><i class="fa-solid fa-receipt text-danger me-1"></i> Today's Expense</small>
-        <h2 class="fw-bold text-danger mt-2 mb-0">₹ {{ summary.today_expense }}</h2>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card-custom shadow-sm">
-        <small class="text-muted text-uppercase fw-bold"><i class="fa-solid fa-arrow-down text-success me-1"></i> Stock In Today</small>
-        <h2 class="fw-bold text-success mt-2 mb-0">{{ summary.today_in }} Pcs</h2>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card-custom shadow-sm">
-        <small class="text-muted text-uppercase fw-bold"><i class="fa-solid fa-arrow-up text-warning me-1"></i> Stock Out Today</small>
-        <h2 class="fw-bold text-warning mt-2 mb-0">{{ summary.today_out }} Pcs</h2>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card-custom shadow-sm">
-        <small class="text-muted text-uppercase fw-bold"><i class="fa-solid fa-vault text-info me-1"></i> Showroom Valuation</small>
-        <h2 class="fw-bold text-info mt-2 mb-0">₹ {{ summary.total_valuation }}</h2>
-      </div>
-    </div>
-  </div>
-
-  <!-- Embedded Power BI Dashboard -->
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="card-custom shadow">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="fw-bold text-white m-0"><i class="fa-solid fa-chart-line text-warning me-2"></i> Power BI Executive Dashboard</h5>
-          <span class="badge bg-warning text-dark fw-bold">Live Power BI Analytics</span>
+<div class="container-fluid py-3">
+    <!-- Header with Warehouse Filter -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark">Inventory Management Dashboard</h3>
+            <p class="text-muted mb-0">Real-time warehouse stock, suppliers, and purchase analytics</p>
         </div>
-        <div class="powerbi-container">
-          <iframe title="Tabsons Power BI Analytics" width="100%" height="100%" src="https://app.powerbi.com/view?r=eyJrIjoiRUMxRDM1IiwidCI6ImI1I30=" frameborder="0" allowFullScreen="true"></iframe>
+        <div class="d-flex align-items-center bg-white p-2 rounded shadow-sm border">
+            <i class="bi bi-funnel-fill me-2 text-primary"></i>
+            <select id="warehouseFilter" class="form-select border-0 bg-transparent fw-semibold" onchange="filterWarehouseData()">
+                <option value="all">All Warehouses</option>
+                <option value="lakshman" selected>Lakshman Warehouse</option>
+                <option value="yundt">Yundt-Mertz</option>
+                <option value="donnelly">Donnelly-Sipes</option>
+            </select>
         </div>
-      </div>
     </div>
-  </div>
 
-  <!-- Live Items & QR Table -->
-  <div class="card-custom shadow">
-    <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-boxes-stacked text-warning me-2"></i> Live Showroom Assets & QR Codes</h5>
-    <div class="table-responsive">
-      <table class="table table-dark table-hover align-middle mb-0">
-          <thead>
-            <tr>
-              <th>QR Code</th>
-              <th>Barcode</th>
-              <th>Item Name</th>
-              <th>Category</th>
-              <th>Location</th>
-              <th>Stock</th>
-              <th>Price</th>
-              <th class="text-center">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in items %}
-            <tr>
-             <td style="text-align: center; vertical-align: middle; white-space: nowrap;">
-  <div style="display: flex; align-items: center; justify-content: center; gap: 14px;">
-    
-    <!-- Share Icon -->
-    <span onclick="shareItem('{{ item.barcode }}')" style="color: #64748b; cursor: pointer; font-size: 1.1rem; padding: 4px;" title="Share">
-      <i class="fa-solid fa-share-nodes"></i>
-    </span>
-
-    <!-- Edit Icon -->
-    <span data-bs-toggle="modal" data-bs-target="#editModal-{{ loop.index }}" style="color: #64748b; cursor: pointer; font-size: 1.1rem; padding: 4px;" title="Edit">
-      <i class="fa-regular fa-pen-to-square"></i>
-    </span>
-
-    <!-- Delete Icon (Admin / Restricted) -->
-    {% if current_user.role == 'admin' %}
-      <form action="/delete-item/{{ item.id }}" method="POST" style="display: inline; margin: 0; padding: 0;" onsubmit="return confirm('Delete this asset?');">
-        <button type="submit" style="background: none !important; border: none !important; outline: none !important; padding: 4px !important; margin: 0 !important; color: #64748b !important; font-size: 1.1rem !important; cursor: pointer !important;" title="Delete">
-          <i class="fa-regular fa-trash-can"></i>
-        </button>
-      </form>
-    {% else %}
-      <span style="color: #cbd5e1; cursor: not-allowed; font-size: 1rem; padding: 4px;" title="Restricted to Admin">
-        <i class="fa-solid fa-lock"></i>
-      </span>
-    {% endif %}
-
-  </div>
-</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+    <!-- Top KPI Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted fs-7 fw-bold text-uppercase">Total Products</span>
+                        <h2 class="fw-bold mt-1 mb-0" id="kpiTotalProducts">11</h2>
+                    </div>
+                    <div class="bg-primary-subtle p-3 rounded-circle text-primary">
+                        <i class="bi bi-box-seam fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted fs-7 fw-bold text-uppercase">Low Stock</span>
+                        <h2 class="fw-bold text-warning mt-1 mb-0" id="kpiLowStock">2</h2>
+                    </div>
+                    <div class="bg-warning-subtle p-3 rounded-circle text-warning">
+                        <i class="bi bi-exclamation-triangle fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted fs-7 fw-bold text-uppercase">Out of Stock</span>
+                        <h2 class="fw-bold text-danger mt-1 mb-0" id="kpiOutOfStock">2</h2>
+                    </div>
+                    <div class="bg-danger-subtle p-3 rounded-circle text-danger">
+                        <i class="bi bi-x-circle fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted fs-7 fw-bold text-uppercase">Suppliers</span>
+                        <h2 class="fw-bold text-success mt-1 mb-0" id="kpiSuppliers">5</h2>
+                    </div>
+                    <div class="bg-success-subtle p-3 rounded-circle text-success">
+                        <i class="bi bi-truck fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 
+    <!-- Analytics & Stock Chart Row -->
+    <div class="row g-3 mb-4">
+        <!-- Stock Value Card -->
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-4 bg-dark text-white rounded-3 h-100">
+                <span class="text-light fs-7 text-uppercase">Value of Stock</span>
+                <h1 class="fw-bold my-3 text-info" id="kpiStockValue">$19,658</h1>
+                <hr class="border-secondary">
+                <h6 class="fw-bold text-uppercase text-muted fs-7 mb-3">Stock Purchases</h6>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>Unfulfilled</span>
+                    <span class="badge bg-warning text-dark fs-6" id="kpiUnfulfilled">4</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Received</span>
+                    <span class="badge bg-success fs-6" id="kpiReceived">1</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Warehouse Stock Bar Chart -->
+        <div class="col-md-9">
+            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white h-100">
+                <h5 class="fw-bold text-dark mb-3">Warehouse Stock Analytics</h5>
+                <div style="height: 250px;">
+                    <canvas id="warehouseStockChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tables Row -->
+    <div class="row g-3">
+        <!-- Recent Purchases Table -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-3 bg-white p-3">
+                <h6 class="fw-bold mb-3">Recent Purchases (Last 10 days)</h6>
+                <div class="table-responsive">
+                    <table class="table align-middle table-hover fs-7">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Supplier</th>
+                                <th>Order Date</th>
+                                <th>Status</th>
+                                <th>Items</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold">Thembe</td>
+                                <td>Mon Sep 26 2022</td>
+                                <td><span class="badge bg-warning text-dark">UNFULFILLED</span></td>
+                                <td>5</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">pix</td>
+                                <td>Mon Mar 20 2023</td>
+                                <td><span class="badge bg-warning text-dark">UNFULFILLED</span></td>
+                                <td>5</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Samancor Haulage</td>
+                                <td>Tue Mar 21 2023</td>
+                                <td><span class="badge bg-warning text-dark">UNFULFILLED</span></td>
+                                <td>5</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Donnelly Vendors</td>
+                                <td>Sat Jun 25 2022</td>
+                                <td><span class="badge bg-success">RECEIVED</span></td>
+                                <td>8</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock Levels with Product Thumbnails -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-3 bg-white p-3">
+                <h6 class="fw-bold mb-3">Stock Levels</h6>
+                <div class="table-responsive">
+                    <table class="table align-middle table-hover fs-7">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Image</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><img src="https://via.placeholder.com/35" class="rounded border" alt="item"></td>
+                                <td class="fw-bold">Lakshman Unit SKU</td>
+                                <td>OTHER</td>
+                                <td><span class="badge bg-primary fs-7">49</span></td>
+                            </tr>
+                            <tr>
+                                <td><img src="https://via.placeholder.com/35" class="rounded border" alt="item"></td>
+                                <td class="fw-bold">Remera blanca y verde</td>
+                                <td>OTHER</td>
+                                <td><span class="badge bg-primary fs-7">41</span></td>
+                            </tr>
+                            <tr>
+                                <td><img src="https://via.placeholder.com/35" class="rounded border" alt="item"></td>
+                                <td class="fw-bold">Impala Industrial</td>
+                                <td>Drop Raise</td>
+                                <td><span class="badge bg-success fs-7">1536</span></td>
+                            </tr>
+                            <tr>
+                                <td><img src="https://via.placeholder.com/35" class="rounded border" alt="item"></td>
+                                <td class="fw-bold">Angla Haulage</td>
+                                <td>Haulage</td>
+                                <td><span class="badge bg-success fs-7">1440</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
+<!-- Chart.js Script -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  function performLookup() {
-    let query = document.getElementById('searchInput').value;
-    if(!query) return;
-    
-    fetch('/api/search-item/' + query)
-      .then(res => res.json())
-      .then(res => {
-        let box = document.getElementById('searchResult');
-        box.classList.remove('d-none');
-        if(res.status === 'success') {
-          let item = res.data;
-          box.innerHTML = `
-            <div class="alert alert-warning bg-dark text-white border-warning mb-0">
-              <h5><strong>${item.name}</strong> (SKU / Barcode: <code>${item.barcode}</code>)</h5>
-              <p class="mb-1">Category: <strong>${item.category}</strong> | Available Stock: <strong>${item.quantity} Pcs</strong> | Location: <strong>${item.location}</strong> | Price: <strong>₹${item.price}</strong></p>
-            </div>
-          `;
-        } else {
-          box.innerHTML = `<div class="alert alert-danger mb-0">No item found for "${query}"</div>`;
+    const ctx = document.getElementById('warehouseStockChart').getContext('2d');
+    let warehouseChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['King-Cole', 'Yundt-Mertz', 'Donnelly-Sipes'],
+            datasets: [{
+                label: 'Stock Quantity',
+                data: [120, 450, 1850],
+                backgroundColor: '#1e293b',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } }
         }
-      });
-  }
-</script>
+    });
 
+    function filterWarehouseData() {
+        const selected = document.getElementById('warehouseFilter').value;
+        if(selected === 'lakshman') {
+            warehouseChart.data.datasets[0].data = [120, 450, 1850];
+        } else {
+            warehouseChart.data.datasets[0].data = [300, 200, 900];
+        }
+        warehouseChart.update();
+    }
+</script>
 {% endblock %}
