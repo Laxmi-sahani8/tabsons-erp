@@ -3,6 +3,7 @@ import sqlite3
 import json
 from datetime import datetime
 import pandas as pd
+from flask import render_template_string, json
 from flask import Flask, render_template_string, request, redirect, url_for, flash, send_file
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -1793,19 +1794,17 @@ def add_transfer():
 def expense_ledger():
     conn = get_db()
     
-@app.route("/powerbi-workspaces")
+    @app.route("/powerbi-workspaces")
 @login_required
 def powerbi_workspaces():
     conn = get_db()
-    
-    # Database se real assets fetch karna
     items = conn.execute("SELECT barcode, asset_name, category, location, stock, price FROM items").fetchall()
     items_list = [dict(i) for i in items]
     conn.close()
 
     items_json = json.dumps(items_list)
 
-    return f"""
+    html_template = """
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -1816,33 +1815,33 @@ def powerbi_workspaces():
         <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
         <style>
-            :root {{
+            :root {
                 --primary-navy: #0f172a;
                 --royal-blue: #1e40af;
                 --accent-blue: #3b82f6;
                 --light-blue: #eff6ff;
                 --card-bg: #ffffff;
                 --body-bg: #f8fafc;
-            }}
-            body {{
+            }
+            body {
                 background-color: var(--body-bg);
                 font-family: 'Plus Jakarta Sans', sans-serif;
                 color: #1e293b;
-            }}
-            .card-custom {{
+            }
+            .card-custom {
                 border: none;
                 border-radius: 16px;
                 box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
                 transition: all 0.25s ease;
                 background: #ffffff;
-            }}
-            .card-custom:hover {{
+            }
+            .card-custom:hover {
                 box-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.08);
-            }}
-            .gradient-navy {{
+            }
+            .gradient-navy {
                 background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
-            }}
-            .icon-box {{
+            }
+            .icon-box {
                 width: 48px;
                 height: 48px;
                 border-radius: 12px;
@@ -1850,8 +1849,8 @@ def powerbi_workspaces():
                 align-items: center;
                 justify-content: center;
                 font-size: 1.25rem;
-            }}
-            .table-custom th {{
+            }
+            .table-custom th {
                 background-color: #f1f5f9;
                 color: #475569;
                 font-weight: 700;
@@ -1860,34 +1859,34 @@ def powerbi_workspaces():
                 letter-spacing: 0.05em;
                 border: none;
                 padding: 12px 16px;
-            }}
-            .table-custom td {{
+            }
+            .table-custom td {
                 padding: 12px 16px;
                 vertical-align: middle;
                 border-bottom: 1px solid #f1f5f9;
                 font-size: 0.85rem;
-            }}
-            .badge-category {{
+            }
+            .badge-category {
                 background-color: #e0f2fe;
                 color: #0369a1;
                 font-weight: 600;
                 padding: 4px 10px;
                 border-radius: 20px;
                 font-size: 0.75rem;
-            }}
-            .search-input {{
+            }
+            .search-input {
                 border-radius: 10px;
                 border: 1px solid #e2e8f0;
                 padding-left: 36px;
                 font-size: 0.85rem;
-            }}
-            .search-icon {{
+            }
+            .search-icon {
                 position: absolute;
                 left: 12px;
                 top: 50%;
                 transform: translateY(-50%);
                 color: #94a3b8;
-            }}
+            }
         </style>
     </head>
     <body class="p-4">
@@ -2061,53 +2060,53 @@ def powerbi_workspaces():
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        const rawAssets = {items_json};
+        const rawAssets = {{ items_json | safe }};
         let myChart = null;
 
-        function initDashboard() {{
+        function initDashboard() {
             populateLocationDropdown();
             populateCategoryDropdown();
             filterDashboard();
-        }}
+        }
 
-        function populateLocationDropdown() {{
+        function populateLocationDropdown() {
             const select = document.getElementById("warehouseSelect");
             const locations = [...new Set(rawAssets.map(a => a.location).filter(Boolean))];
-            locations.forEach(loc => {{
+            locations.forEach(loc => {
                 const opt = document.createElement("option");
                 opt.value = loc;
                 opt.textContent = loc;
                 select.appendChild(opt);
-            }});
-        }}
+            });
+        }
 
-        function populateCategoryDropdown() {{
+        function populateCategoryDropdown() {
             const select = document.getElementById("categoryFilter");
             const categories = [...new Set(rawAssets.map(a => a.category).filter(Boolean))];
-            categories.forEach(cat => {{
+            categories.forEach(cat => {
                 const opt = document.createElement("option");
                 opt.value = cat;
                 opt.textContent = cat;
                 select.appendChild(opt);
-            }});
-        }}
+            });
+        }
 
-        function getFilteredData() {{
+        function getFilteredData() {
             const selectedLoc = document.getElementById("warehouseSelect").value;
-            if (selectedLoc === "all") {{
+            if (selectedLoc === "all") {
                 return rawAssets;
-            }}
+            }
             return rawAssets.filter(a => a.location === selectedLoc);
-        }}
+        }
 
-        function filterDashboard() {{
+        function filterDashboard() {
             const filteredData = getFilteredData();
             updateMetrics(filteredData);
             updateChart(filteredData);
             renderTables();
-        }}
+        }
 
-        function updateMetrics(data) {{
+        function updateMetrics(data) {
             const totalUnits = data.reduce((sum, item) => sum + (Number(item.stock) || 0), 0);
             const lowStock = data.filter(item => (Number(item.stock) || 0) > 0 && (Number(item.stock) || 0) <= 10).length;
             const outOfStock = data.filter(item => (Number(item.stock) || 0) === 0).length;
@@ -2123,52 +2122,52 @@ def powerbi_workspaces():
             document.getElementById("statValuation").innerText = "₹ " + totalValuation.toLocaleString('en-IN');
             document.getElementById("statHubCount").innerText = activeHubs;
             document.getElementById("statTotalSKUs").innerText = data.length;
-        }}
+        }
 
-        function updateChart(data) {{
-            const hubTotals = {{}};
-            data.forEach(item => {{
+        function updateChart(data) {
+            const hubTotals = {};
+            data.forEach(item => {
                 const loc = item.location || 'Unassigned';
                 hubTotals[loc] = (hubTotals[loc] || 0) + (Number(item.stock) || 0);
-            }});
+            });
 
             const labels = Object.keys(hubTotals);
             const values = Object.values(hubTotals);
 
             const ctx = document.getElementById('hubChart').getContext('2d');
             
-            if (myChart) {{
+            if (myChart) {
                 myChart.destroy();
-            }}
+            }
 
-            myChart = new Chart(ctx, {{
+            myChart = new Chart(ctx, {
                 type: 'bar',
-                data: {{
+                data: {
                     labels: labels,
-                    datasets: [{{
+                    datasets: [{
                         label: 'Stock Quantity',
                         data: values,
                         backgroundColor: '#1e40af',
                         hoverBackgroundColor: '#3b82f6',
                         borderRadius: 6,
                         maxBarThickness: 45
-                    }}]
-                }},
-                options: {{
+                    }]
+                },
+                options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {{
-                        legend: {{ display: false }}
-                    }},
-                    scales: {{
-                        x: {{ grid: {{ display: false }} }},
-                        y: {{ grid: {{ color: '#f1f5f9' }}, beginAtZero: true }}
-                    }}
-                }}
-            }});
-        }}
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { grid: { color: '#f1f5f9' }, beginAtZero: true }
+                    }
+                }
+            });
+        }
 
-        function renderTables() {{
+        function renderTables() {
             const filteredData = getFilteredData();
             
             // High Value Assets Table
@@ -2178,50 +2177,51 @@ def powerbi_workspaces():
                 .filter(item => (item.asset_name || '').toLowerCase().includes(highValSearch) || (item.barcode || '').toLowerCase().includes(highValSearch));
 
             const highValTbody = document.getElementById("highValueTableBody");
-            if (sortedHighVal.length === 0) {{
+            if (sortedHighVal.length === 0) {
                 highValTbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">No matching assets found</td></tr>`;
-            }} else {{
+            } else {
                 highValTbody.innerHTML = sortedHighVal.slice(0, 10).map(item => `
                     <tr>
-                        <td class="fw-bold text-secondary">${{item.barcode || 'N/A'}}</td>
-                        <td class="fw-semibold text-dark">${{item.asset_name}}</td>
+                        <td class="fw-bold text-secondary">${item.barcode || 'N/A'}</td>
+                        <td class="fw-semibold text-dark">${item.asset_name}</td>
                         <td class="text-primary fw-bold">₹ ${(Number(item.price) || 0).toLocaleString('en-IN')}</td>
-                        <td><span class="badge ${{Number(item.stock) <= 10 ? 'bg-warning text-dark' : 'bg-primary'}}">${{item.stock}}</span></td>
+                        <td><span class="badge ${Number(item.stock) <= 10 ? 'bg-warning text-dark' : 'bg-primary'}">${item.stock}</span></td>
                     </tr>
                 `).join('');
-            }}
+            }
 
             // Stock Inventory Table
             const stockSearch = document.getElementById("stockSearch").value.toLowerCase();
             const catFilter = document.getElementById("categoryFilter").value;
 
-            const filteredStock = filteredData.filter(item => {{
+            const filteredStock = filteredData.filter(item => {
                 const matchesSearch = (item.asset_name || '').toLowerCase().includes(stockSearch) || (item.barcode || '').toLowerCase().includes(stockSearch);
                 const matchesCat = (catFilter === 'all' || item.category === catFilter);
                 return matchesSearch && matchesCat;
-            }});
+            });
 
             const stockTbody = document.getElementById("stockTableBody");
-            if (filteredStock.length === 0) {{
+            if (filteredStock.length === 0) {
                 stockTbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">No matching records</td></tr>`;
-            }} else {{
+            } else {
                 stockTbody.innerHTML = filteredStock.slice(0, 10).map(item => `
                     <tr>
-                        <td class="fw-bold text-secondary">${{item.barcode || 'N/A'}}</td>
-                        <td class="fw-semibold text-dark">${{item.asset_name}}</td>
-                        <td><span class="badge-category">${{item.category || 'General'}}</span></td>
-                        <td><span class="fw-bold ${{Number(item.stock) <= 5 ? 'text-danger' : 'text-success'}}">${{item.stock}}</span></td>
+                        <td class="fw-bold text-secondary">${item.barcode || 'N/A'}</td>
+                        <td class="fw-semibold text-dark">${item.asset_name}</td>
+                        <td><span class="badge-category">${item.category || 'General'}</span></td>
+                        <td><span class="fw-bold ${Number(item.stock) <= 5 ? 'text-danger' : 'text-success'}">${item.stock}</span></td>
                     </tr>
                 `).join('');
-            }}
-        }}
+            }
+        }
 
         window.onload = initDashboard;
     </script>
     </body>
     </html>
     """
-    
+
+    return render_template_string(html_template, items_json=items_json)
 @app.route("/add-expense", methods=["POST"])
 @login_required
 def add_expense():
