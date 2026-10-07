@@ -1793,10 +1793,19 @@ def add_transfer():
 def expense_ledger():
     conn = get_db()
     
-
 @app.route("/powerbi-workspaces")
+@login_required
 def powerbi_workspaces():
-    return """
+    conn = get_db()
+    
+    # Database se real assets fetch karna
+    items = conn.execute("SELECT barcode, asset_name, category, location, stock, price FROM items").fetchall()
+    items_list = [dict(i) for i in items]
+    conn.close()
+
+    items_json = json.dumps(items_list)
+
+    return f"""
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -1805,26 +1814,94 @@ def powerbi_workspaces():
         <title>Dashboard</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
         <style>
-            body { background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-            .fs-7 { font-size: 0.825rem; }
+            :root {{
+                --primary-navy: #0f172a;
+                --royal-blue: #1e40af;
+                --accent-blue: #3b82f6;
+                --light-blue: #eff6ff;
+                --card-bg: #ffffff;
+                --body-bg: #f8fafc;
+            }}
+            body {{
+                background-color: var(--body-bg);
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                color: #1e293b;
+            }}
+            .card-custom {{
+                border: none;
+                border-radius: 16px;
+                box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+                transition: all 0.25s ease;
+                background: #ffffff;
+            }}
+            .card-custom:hover {{
+                box-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.08);
+            }}
+            .gradient-navy {{
+                background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+            }}
+            .icon-box {{
+                width: 48px;
+                height: 48px;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.25rem;
+            }}
+            .table-custom th {{
+                background-color: #f1f5f9;
+                color: #475569;
+                font-weight: 700;
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                border: none;
+                padding: 12px 16px;
+            }}
+            .table-custom td {{
+                padding: 12px 16px;
+                vertical-align: middle;
+                border-bottom: 1px solid #f1f5f9;
+                font-size: 0.85rem;
+            }}
+            .badge-category {{
+                background-color: #e0f2fe;
+                color: #0369a1;
+                font-weight: 600;
+                padding: 4px 10px;
+                border-radius: 20px;
+                font-size: 0.75rem;
+            }}
+            .search-input {{
+                border-radius: 10px;
+                border: 1px solid #e2e8f0;
+                padding-left: 36px;
+                font-size: 0.85rem;
+            }}
+            .search-icon {{
+                position: absolute;
+                left: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: #94a3b8;
+            }}
         </style>
     </head>
-    <body>
-    <div class="container-fluid p-4">
+    <body class="p-4">
+    <div class="container-fluid">
         <!-- Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
             <div>
-                <h3 class="fw-bold text-dark mb-0">Dashboard</h3>
+                <h2 class="fw-extrabold text-dark mb-1" style="font-size: 1.75rem; letter-spacing: -0.02em;">Dashboard</h2>
+                <span class="text-muted fs-7">Real-time inventory and Hub analytical insights</span>
             </div>
-            <div class="d-flex align-items-center bg-white px-3 py-1 rounded border shadow-sm" style="min-width: 250px;">
-                <i class="bi bi-funnel text-muted me-2"></i>
-                <select id="warehouseSelect" class="form-select border-0 bg-transparent shadow-none fs-7">
-                    <option value="all">All Locations / Hubs</option>
-                    <option value="Hub Alpha">Hub Alpha</option>
-                    <option value="Hub Beta">Hub Beta</option>
-                    <option value="IT Storage">IT Storage</option>
-                    <option value="Showroom Floor">Showroom Floor</option>
+            <div class="d-flex align-items-center bg-white px-3 py-2 rounded-3 border shadow-sm" style="min-width: 260px;">
+                <i class="bi bi-funnel-fill text-primary me-2 fs-6"></i>
+                <select id="warehouseSelect" class="form-select border-0 bg-transparent shadow-none fw-semibold fs-7 p-0" onchange="filterDashboard()">
+                    <option value="all">All Hub Locations</option>
                 </select>
             </div>
         </div>
@@ -1832,141 +1909,141 @@ def powerbi_workspaces():
         <!-- Metric Cards -->
         <div class="row g-3 mb-4">
             <div class="col-md-3">
-                <div class="card border-0 shadow-sm p-3 bg-white rounded-3">
+                <div class="card card-custom p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <small class="text-muted fw-semibold">Total Stock Units</small>
-                            <h2 class="fw-bold mb-0 mt-1">361</h2>
+                            <span class="text-muted fw-semibold fs-7">Total Stock Units</span>
+                            <h3 class="fw-extrabold mb-0 mt-1 text-dark" id="statTotalUnits">0</h3>
                         </div>
-                        <div class="bg-light p-2 rounded"><i class="bi bi-box-seam fs-4 text-primary"></i></div>
+                        <div class="icon-box bg-primary bg-opacity-10 text-primary">
+                            <i class="bi bi-boxes"></i>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card border-0 shadow-sm p-3 bg-white rounded-3">
+                <div class="card card-custom p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <small class="text-muted fw-semibold">Low Stock Assets</small>
-                            <h2 class="fw-bold mb-0 mt-1 text-warning">2</h2>
+                            <span class="text-muted fw-semibold fs-7">Low Stock Assets</span>
+                            <h3 class="fw-extrabold mb-0 mt-1 text-warning" id="statLowStock">0</h3>
                         </div>
-                        <div class="bg-light p-2 rounded"><i class="bi bi-exclamation-triangle fs-4 text-warning"></i></div>
+                        <div class="icon-box bg-warning bg-opacity-10 text-warning">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card border-0 shadow-sm p-3 bg-white rounded-3">
+                <div class="card card-custom p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <small class="text-muted fw-semibold">Out of Stock</small>
-                            <h2 class="fw-bold mb-0 mt-1 text-danger">0</h2>
+                            <span class="text-muted fw-semibold fs-7">Out of Stock</span>
+                            <h3 class="fw-extrabold mb-0 mt-1 text-danger" id="statOutOfStock">0</h3>
                         </div>
-                        <div class="bg-light p-2 rounded"><i class="bi bi-x-circle fs-4 text-danger"></i></div>
+                        <div class="icon-box bg-danger bg-opacity-10 text-danger">
+                            <i class="bi bi-x-octagon-fill"></i>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card border-0 shadow-sm p-3 bg-white rounded-3">
+                <div class="card card-custom p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <small class="text-muted fw-semibold">Categories</small>
-                            <h2 class="fw-bold mb-0 mt-1 text-success">6</h2>
+                            <span class="text-muted fw-semibold fs-7">Unique Categories</span>
+                            <h3 class="fw-extrabold mb-0 mt-1 text-success" id="statCategories">0</h3>
                         </div>
-                        <div class="bg-light p-2 rounded"><i class="bi bi-tags fs-4 text-success"></i></div>
+                        <div class="icon-box bg-success bg-opacity-10 text-success">
+                            <i class="bi bi-tags-fill"></i>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Chart and Summary -->
+        <!-- Valuation & Chart Row -->
         <div class="row g-3 mb-4">
             <div class="col-md-3">
-                <div class="card border-0 shadow-sm p-4 text-white rounded-3 h-100" style="background-color: #0b132b;">
-                    <span class="text-light fs-7">Total Valuation</span>
-                    <h2 class="fw-bold my-3 text-white">₹ 36,12,000</h2>
-                    <hr class="border-secondary my-3">
-                    <small class="text-light fw-bold">Hub Stock Status</small>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <span>Hub Alpha</span>
-                        <span class="fw-bold text-info">45 Units</span>
+                <div class="card card-custom gradient-navy p-4 text-white h-100 justify-content-between">
+                    <div>
+                        <span class="text-white-50 fs-7 fw-medium">Total Inventory Valuation</span>
+                        <h2 class="fw-extrabold my-2 text-white" id="statValuation">₹ 0</h2>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mt-2">
-                        <span>IT Storage</span>
-                        <span class="fw-bold text-success">32 Units</span>
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between align-items-center pb-2 border-bottom border-white border-opacity-10">
+                            <span class="text-white-50 fs-7">Active Hub Count</span>
+                            <span class="fw-bold text-white fs-7" id="statHubCount">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center pt-2">
+                            <span class="text-white-50 fs-7">Total SKUs</span>
+                            <span class="fw-bold text-info fs-7" id="statTotalSKUs">0</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="col-md-9">
-                <div class="card border-0 shadow-sm p-3 bg-white rounded-3 h-100">
-                    <h6 class="fw-bold text-dark mb-1">Hub Stock Distribution</h6>
-                    <small class="text-muted d-block mb-3">Asset quantity per hub location</small>
-                    <div style="height: 200px;">
-                        <canvas id="warehouseStockChart"></canvas>
+                <div class="card card-custom p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="fw-bold text-dark mb-0">Hub Stock Distribution</h6>
+                            <span class="text-muted fs-7">Current inventory quantity across location hubs</span>
+                        </div>
+                    </div>
+                    <div style="height: 210px; position: relative;">
+                        <canvas id="hubChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Tables -->
+        <!-- Tables Row -->
         <div class="row g-3">
+            <!-- High Value Assets Table -->
             <div class="col-md-6">
-                <div class="card border-0 shadow-sm rounded-3 bg-white p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold mb-0">High Value Assets</h6>
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="input-group input-group-sm" style="max-width: 150px;">
-                                <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
-                                <input type="text" id="purchaseSearchInput" class="form-control bg-light border-start-0" placeholder="Search..." onkeyup="filterPurchases()">
-                            </div>
+                <div class="card card-custom p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-star-fill text-warning me-2"></i>High Value Assets</h6>
+                        <div class="position-relative" style="width: 180px;">
+                            <i class="bi bi-search search-icon"></i>
+                            <input type="text" id="highValueSearch" class="form-control form-control-sm search-input" placeholder="Search asset..." onkeyup="renderTables()">
                         </div>
                     </div>
-
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle fs-7 mb-0" id="purchasesTable">
-                            <thead class="table-light">
+                    <div class="table-responsive" style="max-height: 280px;">
+                        <table class="table table-custom align-middle mb-0">
+                            <thead>
                                 <tr>
                                     <th>SKU</th>
                                     <th>Asset Name</th>
                                     <th>Unit Price</th>
-                                    <th>Quantity</th>
+                                    <th>Stock</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr><td class="fw-bold">TAB-3001</td><td>Dell XPS 15 Laptop</td><td>₹ 1,25,000</td><td><span class="badge bg-primary">15</span></td></tr>
-                                <tr><td class="fw-bold">TAB-3004</td><td>Cisco Network Switch 24-Port</td><td>₹ 45,000</td><td><span class="badge bg-warning text-dark">5</span></td></tr>
-                                <tr><td class="fw-bold">TAB-1001</td><td>Heavy Duty Cargo Container</td><td>₹ 45,000</td><td><span class="badge bg-primary">25</span></td></tr>
-                                <tr><td class="fw-bold">TAB-1002</td><td>Hydraulic Pallet Jack</td><td>₹ 18,500</td><td><span class="badge bg-warning text-dark">6</span></td></tr>
-                            </tbody>
+                            <tbody id="highValueTableBody"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
+            <!-- Stock Levels Table -->
             <div class="col-md-6">
-                <div class="card border-0 shadow-sm rounded-3 bg-white p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold mb-0">TABSONS Stock Levels</h6>
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="d-flex align-items-center border rounded bg-light px-2" style="height: 31px;">
-                                <i class="bi bi-funnel text-muted me-1 fs-7"></i>
-                                <select id="stockCategorySelect" class="form-select border-0 bg-transparent shadow-none fs-7 p-0" style="min-width: 90px;" onchange="filterStock()">
-                                    <option value="all">All Category</option>
-                                    <option value="IT Hardware">IT Hardware</option>
-                                    <option value="Networking">Networking</option>
-                                    <option value="Furniture">Furniture</option>
-                                    <option value="Electronics">Electronics</option>
-                                    <option value="Packaging Material">Packaging</option>
-                                </select>
-                            </div>
-                            <div class="input-group input-group-sm" style="max-width: 130px;">
-                                <input type="text" id="stockSearchInput" class="form-control bg-light" placeholder="Search..." onkeyup="filterStock()">
+                <div class="card card-custom p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-layers-fill text-primary me-2"></i>Stock Inventory Levels</h6>
+                        <div class="d-flex gap-2">
+                            <select id="categoryFilter" class="form-select form-select-sm border-0 bg-light fw-medium fs-7" style="width: 120px;" onchange="renderTables()">
+                                <option value="all">All Category</option>
+                            </select>
+                            <div class="position-relative" style="width: 150px;">
+                                <i class="bi bi-search search-icon"></i>
+                                <input type="text" id="stockSearch" class="form-control form-control-sm search-input" placeholder="Search..." onkeyup="renderTables()">
                             </div>
                         </div>
                     </div>
-
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle fs-7 mb-0" id="stockTable">
-                            <thead class="table-light">
+                    <div class="table-responsive" style="max-height: 280px;">
+                        <table class="table table-custom align-middle mb-0">
+                            <thead>
                                 <tr>
                                     <th>SKU</th>
                                     <th>Asset Name</th>
@@ -1974,14 +2051,7 @@ def powerbi_workspaces():
                                     <th>Stock</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr data-category="IT Hardware"><td class="fw-bold">TAB-3005</td><td class="product-name">Barcode Scanner Handheld</td><td>IT Hardware</td><td><span class="text-success fw-bold">30</span></td></tr>
-                                <tr data-category="Networking"><td class="fw-bold">TAB-3004</td><td class="product-name">Cisco Network Switch 24-Port</td><td>Networking</td><td><span class="text-warning fw-bold">5</span></td></tr>
-                                <tr data-category="Furniture"><td class="fw-bold">TAB-3003</td><td class="product-name">Ergonomic Office Chair</td><td>Furniture</td><td><span class="text-success fw-bold">20</span></td></tr>
-                                <tr data-category="IT Hardware"><td class="fw-bold">TAB-3002</td><td class="product-name">Logitech Wireless Mouse</td><td>IT Hardware</td><td><span class="text-success fw-bold">50</span></td></tr>
-                                <tr data-category="Electronics"><td class="fw-bold">TAB-1005</td><td class="product-name">GPS Asset Tracker v4</td><td>Electronics</td><td><span class="text-success fw-bold">40</span></td></tr>
-                                <tr data-category="Packaging Material"><td class="fw-bold">TAB-1004</td><td class="product-name">Packaging Roll Box (A-Grade)</td><td>Packaging Material</td><td><span class="text-success fw-bold">150</span></td></tr>
-                            </tbody>
+                            <tbody id="stockTableBody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -1991,59 +2061,167 @@ def powerbi_workspaces():
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        function filterPurchases() {
-            let input = document.getElementById("purchaseSearchInput").value.toLowerCase();
-            let rows = document.querySelectorAll("#purchasesTable tbody tr");
-            rows.forEach(row => {
-                let text = row.cells[1] ? row.cells[1].textContent.toLowerCase() : "";
-                row.style.display = text.includes(input) ? "" : "none";
-            });
-        }
+        const rawAssets = {items_json};
+        let myChart = null;
 
-        function filterStock() {
-            let search = document.getElementById("stockSearchInput").value.toLowerCase();
-            let cat = document.getElementById("stockCategorySelect").value;
-            let rows = document.querySelectorAll("#stockTable tbody tr");
+        function initDashboard() {{
+            populateLocationDropdown();
+            populateCategoryDropdown();
+            filterDashboard();
+        }}
 
-            rows.forEach(row => {
-                let nameCell = row.querySelector(".product-name");
-                if (nameCell) {
-                    let name = nameCell.textContent.toLowerCase();
-                    let category = row.getAttribute("data-category");
+        function populateLocationDropdown() {{
+            const select = document.getElementById("warehouseSelect");
+            const locations = [...new Set(rawAssets.map(a => a.location).filter(Boolean))];
+            locations.forEach(loc => {{
+                const opt = document.createElement("option");
+                opt.value = loc;
+                opt.textContent = loc;
+                select.appendChild(opt);
+            }});
+        }}
 
-                    let matchesSearch = name.includes(search);
-                    let matchesCat = (cat === "all" || category === cat);
+        function populateCategoryDropdown() {{
+            const select = document.getElementById("categoryFilter");
+            const categories = [...new Set(rawAssets.map(a => a.category).filter(Boolean))];
+            categories.forEach(cat => {{
+                const opt = document.createElement("option");
+                opt.value = cat;
+                opt.textContent = cat;
+                select.appendChild(opt);
+            }});
+        }}
 
-                    row.style.display = (matchesSearch && matchesCat) ? "" : "none";
-                }
-            });
-        }
+        function getFilteredData() {{
+            const selectedLoc = document.getElementById("warehouseSelect").value;
+            if (selectedLoc === "all") {{
+                return rawAssets;
+            }}
+            return rawAssets.filter(a => a.location === selectedLoc);
+        }}
 
-        const ctx = document.getElementById('warehouseStockChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Hub Beta', 'IT Storage', 'Hub Alpha', 'Showroom Floor', 'Security Terminal'],
-                datasets: [{
-                    label: 'Stock Quantity',
-                    data: [180, 32, 45, 56, 40],
-                    backgroundColor: '#0f172a',
-                    borderRadius: 3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } }
-            }
-        });
+        function filterDashboard() {{
+            const filteredData = getFilteredData();
+            updateMetrics(filteredData);
+            updateChart(filteredData);
+            renderTables();
+        }}
+
+        function updateMetrics(data) {{
+            const totalUnits = data.reduce((sum, item) => sum + (Number(item.stock) || 0), 0);
+            const lowStock = data.filter(item => (Number(item.stock) || 0) > 0 && (Number(item.stock) || 0) <= 10).length;
+            const outOfStock = data.filter(item => (Number(item.stock) || 0) === 0).length;
+            const categories = new Set(data.map(item => item.category).filter(Boolean)).size;
+            
+            const totalValuation = data.reduce((sum, item) => sum + ((Number(item.stock) || 0) * (Number(item.price) || 0)), 0);
+            const activeHubs = new Set(data.map(item => item.location).filter(Boolean)).size;
+
+            document.getElementById("statTotalUnits").innerText = totalUnits.toLocaleString();
+            document.getElementById("statLowStock").innerText = lowStock;
+            document.getElementById("statOutOfStock").innerText = outOfStock;
+            document.getElementById("statCategories").innerText = categories;
+            document.getElementById("statValuation").innerText = "₹ " + totalValuation.toLocaleString('en-IN');
+            document.getElementById("statHubCount").innerText = activeHubs;
+            document.getElementById("statTotalSKUs").innerText = data.length;
+        }}
+
+        function updateChart(data) {{
+            const hubTotals = {{}};
+            data.forEach(item => {{
+                const loc = item.location || 'Unassigned';
+                hubTotals[loc] = (hubTotals[loc] || 0) + (Number(item.stock) || 0);
+            }});
+
+            const labels = Object.keys(hubTotals);
+            const values = Object.values(hubTotals);
+
+            const ctx = document.getElementById('hubChart').getContext('2d');
+            
+            if (myChart) {{
+                myChart.destroy();
+            }}
+
+            myChart = new Chart(ctx, {{
+                type: 'bar',
+                data: {{
+                    labels: labels,
+                    datasets: [{{
+                        label: 'Stock Quantity',
+                        data: values,
+                        backgroundColor: '#1e40af',
+                        hoverBackgroundColor: '#3b82f6',
+                        borderRadius: 6,
+                        maxBarThickness: 45
+                    }}]
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {{
+                        legend: {{ display: false }}
+                    }},
+                    scales: {{
+                        x: {{ grid: {{ display: false }} }},
+                        y: {{ grid: {{ color: '#f1f5f9' }}, beginAtZero: true }}
+                    }}
+                }}
+            }});
+        }}
+
+        function renderTables() {{
+            const filteredData = getFilteredData();
+            
+            // High Value Assets Table
+            const highValSearch = document.getElementById("highValueSearch").value.toLowerCase();
+            const sortedHighVal = [...filteredData]
+                .sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0))
+                .filter(item => (item.asset_name || '').toLowerCase().includes(highValSearch) || (item.barcode || '').toLowerCase().includes(highValSearch));
+
+            const highValTbody = document.getElementById("highValueTableBody");
+            if (sortedHighVal.length === 0) {{
+                highValTbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">No matching assets found</td></tr>`;
+            }} else {{
+                highValTbody.innerHTML = sortedHighVal.slice(0, 10).map(item => `
+                    <tr>
+                        <td class="fw-bold text-secondary">${{item.barcode || 'N/A'}}</td>
+                        <td class="fw-semibold text-dark">${{item.asset_name}}</td>
+                        <td class="text-primary fw-bold">₹ ${(Number(item.price) || 0).toLocaleString('en-IN')}</td>
+                        <td><span class="badge ${{Number(item.stock) <= 10 ? 'bg-warning text-dark' : 'bg-primary'}}">${{item.stock}}</span></td>
+                    </tr>
+                `).join('');
+            }}
+
+            // Stock Inventory Table
+            const stockSearch = document.getElementById("stockSearch").value.toLowerCase();
+            const catFilter = document.getElementById("categoryFilter").value;
+
+            const filteredStock = filteredData.filter(item => {{
+                const matchesSearch = (item.asset_name || '').toLowerCase().includes(stockSearch) || (item.barcode || '').toLowerCase().includes(stockSearch);
+                const matchesCat = (catFilter === 'all' || item.category === catFilter);
+                return matchesSearch && matchesCat;
+            }});
+
+            const stockTbody = document.getElementById("stockTableBody");
+            if (filteredStock.length === 0) {{
+                stockTbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">No matching records</td></tr>`;
+            }} else {{
+                stockTbody.innerHTML = filteredStock.slice(0, 10).map(item => `
+                    <tr>
+                        <td class="fw-bold text-secondary">${{item.barcode || 'N/A'}}</td>
+                        <td class="fw-semibold text-dark">${{item.asset_name}}</td>
+                        <td><span class="badge-category">${{item.category || 'General'}}</span></td>
+                        <td><span class="fw-bold ${{Number(item.stock) <= 5 ? 'text-danger' : 'text-success'}}">${{item.stock}}</span></td>
+                    </tr>
+                `).join('');
+            }}
+        }}
+
+        window.onload = initDashboard;
     </script>
     </body>
     </html>
     """
-    expenses = [dict(row) for row in conn.execute("SELECT * FROM expenses ORDER BY id DESC").fetchall()]
-    conn.close()
-    return render_page("expense", "Daily Expense Ledger", "Track showroom operational and logistics expenses", EXPENSE_CONTENT, expenses=expenses)
+
 
 @app.route("/add-expense", methods=["POST"])
 @login_required
