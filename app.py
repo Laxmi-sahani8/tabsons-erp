@@ -2221,8 +2221,7 @@ def powerbi_workspaces():
     </body>
     </html>
     """
-
-
+    
 @app.route("/add-expense", methods=["POST"])
 @login_required
 def add_expense():
