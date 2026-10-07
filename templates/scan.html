@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5 text-center">
+  <div class="card bg-dark text-white border-secondary p-4 shadow" style="max-width: 500px; margin: auto;">
+    <h4 class="fw-bold text-warning mb-3"><i class="fa-solid fa-qrcode me-2"></i> Live QR / Barcode Scanner</h4>
+    <input type="text" id="barcodeScannerInput" class="form-control bg-secondary text-white border-0 text-center fs-5 mb-3" placeholder="Scan Barcode here..." autofocus onchange="scanSearch()">
+    <div id="scanOutput" class="text-start"></div>
+  </div>
+</div>
+
+<script>
+  function scanSearch() {
+    let code = document.getElementById('barcodeScannerInput').value;
+    fetch('/api/search-item/' + code)
+      .then(r => r.json())
+      .then(res => {
+        let out = document.getElementById('scanOutput');
+        if(res.status === 'success') {
+          let item = res.data;
+          out.innerHTML = `
+            <div class="p-3 bg-secondary rounded mt-2">
+              <h5 class="text-warning fw-bold">${item.name}</h5>
+              <p class="m-0">SKU: <code>${item.barcode}</code></p>
+              <p class="m-0">Price: ₹ ${item.price}</p>
+              <p class="m-0">Stock: ${item.quantity} Pcs</p>
+              <p class="m-0">Location: ${item.location}</p>
+            </div>
+          `;
+        } else {
+          out.innerHTML = `<div class="alert alert-danger mt-2">Item not found in Tabsons DB!</div>`;
+        }
+      });
+  }
+</script>
+{% endblock %}
