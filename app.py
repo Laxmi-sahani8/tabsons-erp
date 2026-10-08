@@ -1927,6 +1927,77 @@ def logout():
     log_activity(current_user.name, "LOGOUT", "User logged out")
     logout_user()
     return redirect(url_for("login"))
+import datetime
+import uuid
+import pandas as pd
+from flask import request, jsonify
+
+@app.route("/upload-data-history", methods=["POST"])
+@login_required
+def upload_data_history():
+    if 'file' not in request.files:
+        return jsonify({"success": False, "message": "No file uploaded"}), 400
+        
+    file = request.files['file']
+    if file and file.filename:
+        try:
+            filename = file.filename
+            batch_id = str(uuid.uuid4())[:8]
+            upload_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            if filename.endswith('.csv'):
+                df = pd.read_csv(file)
+            else:
+                df = pd.read_excel(file)
+
+            conn = get_db()
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS upload_batches (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    batch_id TEXT UNIQUE,
+                    filename TEXT,
+                    upload_date TEXT
+                )
+            """)
+            cursor.execute("INSERT INTO upload_batches (batch_id, filename, upload_date) VALUES (?, ?, ?)",
+                           (batch_id, filename, upload_date))
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    batch_id TEXT,
+                    barcode TEXT,
+                    asset_name TEXT,
+                    category TEXT,
+                    location TEXT,
+                    stock INTEGER,
+                    price REAL
+                )
+            """)
+
+            df.columns = [str(col).strip().lower() for col in df.columns]
+
+            for _, row in df.iterrows():
+                cursor.execute("""
+                    INSERT INTO items (batch_id, barcode, asset_name, category, location, stock, price)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    batch_id,
+                    str(row.get('barcode') or row.get('sku') or 'N/A'),
+                    str(row.get('asset_name') or row.get('name') or 'Item'),
+                    str(row.get('category') or 'General'),
+                    str(row.get('location') or row.get('hub') or 'Main Hub'),
+                    int(row.get('stock') or row.get('quantity') or 0),
+                    float(row.get('price') or row.get('cost') or 0.0)
+                ))
+
+            conn.commit()
+            conn.close()
+            return jsonify({"success": True, "message": f"File '{filename}' safely stored with Batch ID: {batch_id}"})
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)}), 500
 
 if __name__ == "__main__":
     import os
